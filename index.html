@@ -650,51 +650,66 @@
   })();
 <!-- В КОНЦЕ ФАЙЛА, СРАЗУ ПЕРЕД </body> (замени весь старый </script> на этот) -->
 <script>
-  (function() {
+  (function () {
     const modal = document.getElementById('installModal');
     const closeBtn = document.getElementById('closeModal');
     const openBtns = document.querySelectorAll('.js-open-install');
 
+    const APK_URL = 'https://github.com/kiros4650/123123/releases/download/1.0.0/SensualControl.apk';
+
+    /* ---------- открытие / закрытие модалки ---------- */
     openBtns.forEach(btn => {
-      btn.addEventListener('click', () => {
-        modal.classList.add('open');
-      });
+      btn.addEventListener('click', () => modal.classList.add('open'));
+    });
+    if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.remove('open'));
+    modal.addEventListener('click', e => {
+      if (e.target === modal) modal.classList.remove('open');
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && modal.classList.contains('open')) modal.classList.remove('open');
     });
 
-    closeBtn.addEventListener('click', () => {
-      modal.classList.remove('open');
-    });
+    /* ---------- скачивание по кнопке ---------- */
+    // 1) находим все кнопки/ссылки скачивания внутри модалки
+    const dlBtns = modal.querySelectorAll('[data-apk-download], .js-download-apk, .os-card.available');
 
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) {
-        modal.classList.remove('open');
+    dlBtns.forEach(btn => {
+      // если это карточка (div) — сделаем её кликабельной
+      if (btn.tagName !== 'A' && btn.tagName !== 'BUTTON') {
+        btn.style.cursor = 'pointer';
       }
-    });
 
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && modal.classList.contains('open')) {
-        modal.classList.remove('open');
-      }
-    });
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
 
-    // ==================== АВТОМАТИЧЕСКОЕ СКАЧИВАНИЕ APK ====================
-    // Запускается только когда модалка открыта (Android-карточка доступна)
-    const androidCard = modal.querySelector('.os-card.available');
-    if (androidCard) {
-      setTimeout(() => {
-        if (modal.classList.contains('open')) {
-          const apkUrl = 'https://github.com/kiros4650/123123/releases/download/1.0.0/SensualControl.apk';
+        const original = btn.innerHTML;
+        btn.innerHTML = 'Скачиваем…';
+
+        try {
+          // Пытаемся скачать как файл (blob) — так Android сразу ставит установщик
+          const res = await fetch(APK_URL, { mode: 'cors' });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
-          a.href = apkUrl;
+          a.href = url;
           a.download = 'SensualControl.apk';
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(url), 4000);
+        } catch (err) {
+          // Фолбэк: если CORS не прошёл — просто уводим на страницу загрузки
+          console.warn('Blob download failed, fallback:', err);
+          window.location.href = APK_URL;
+          return;
         }
-      }, 300);
-    }
+
+        btn.innerHTML = original;
+      });
+    });
   })();
 </script>
-</body>
 </body>
 </html>
